@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>maimai 成績轉換器</title>
+<style>
+  :root {
+    --pink:    #f06292;
+    --pink-d:  #c2185b;
+    --pink-bg: #fce4ec;
+    --teal:    #26a69a;
+    --teal-d:  #00695c;
+    --teal-bg: #e0f2f1;
+    --purple:  #7c4dff;
+    --purple-d:#4527a0;
+    --purple-bg:#ede7f6;
+    --amber:   #f59e0b;
+    --amber-d: #92400e;
+    --amber-bg:#fffbeb;
+    --green:   #22c55e;
+    --green-d: #14532d;
+    --green-bg:#dcfce7;
+    --red:     #ef4444;
+    --red-d:   #7f1d1d;
+    --red-bg:  #fee2e2;
+    --gray-50: #f9fafb;
+    --gray-100:#f3f4f6;
+    --gray-200:#e5e7eb;
+    --gray-400:#9ca3af;
+    --gray-600:#4b5563;
+    --gray-800:#1f2937;
+    --bg: #fff;
+    --surface: #fafafa;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --pink-bg: #4a1535;
+      --teal-bg: #0a2e2c;
+      --purple-bg: #2d1a5e;
+      --amber-bg: #451a03;
+      --green-bg: #052e16;
+      --red-bg: #450a0a;
+      --gray-50: #111827;
+      --gray-100:#1f2937;
+      --gray-200:#374151;
+      --gray-400:#6b7280;
+      --gray-600:#9ca3af;
+      --gray-800:#f9fafb;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Hiragino Kaku Gothic Pro', 'Noto Sans TC', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── header ── */
+  .header {
+    background: linear-gradient(135deg, #f8bbd0 0%, #e1bee7 50%, #bbdefb 100%);
+    padding: 2.5rem 1.5rem 2.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: .75rem;
+  }
+  .logo-diamond {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    border-radius: 8px;
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+  .header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #3a1c71;
+    letter-spacing: -.01em;
+  }
+  .header p {
+    font-size: .875rem;
+    color: #6b3fa0;
+    margin-top: .25rem;
+  }
+
+
+  /* ── main ── */
+  .main { max-width: 660px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+  /* ── drop zone ── */
+  .drop-zone {
+    border: 2px dashed #d1a3c9;
+    border-radius: var(--radius);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    position: relative;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.drag {
+    background: #fdf0f8;
+    border-color: var(--pink);
+  }
+  @media (prefers-color-scheme: dark) {
+    .drop-zone:hover, .drop-zone.drag { background: #2a1a2e; }
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--pink-bg), var(--purple-bg));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+  }
+  .drop-icon svg { width: 22px; height: 22px; }
+  .drop-label {
+    font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: .25rem;
+  }
+  .drop-hint { font-size: .8rem; color: var(--text-muted); }
+
+  /* ── progress ── */
+  .progress-track {
+    height: 4px; background: var(--border); border-radius: 2px;
+    margin-top: 1rem; display: none; overflow: hidden;
+  }
+  .progress-fill {
+    height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--pink), var(--purple));
+    width: 0%; transition: width .3s;
+  }
+
+  /* ── status ── */
+  .status-bar {
+    margin-top: 1rem; padding: .75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: .875rem; display: none;
+    border: 1px solid transparent;
+  }
+  .status-bar.info    { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+  .status-bar.success { background: var(--green-bg); color: var(--green-d); border-color: #86efac; }
+  .status-bar.error   { background: var(--red-bg); color: var(--red-d); border-color: #fca5a5; }
+  .status-bar.warn    { background: var(--amber-bg); color: var(--amber-d); border-color: #fcd34d; }
+  @media (prefers-color-scheme: dark) {
+    .status-bar.info    { background: #0f172a; color: #93c5fd; border-color: #1e3a5f; }
+    .status-bar.success { background: var(--green-bg); color: #86efac; border-color: #14532d; }
+    .status-bar.error   { background: var(--red-bg); color: #fca5a5; border-color: #7f1d1d; }
+    .status-bar.warn    { background: var(--amber-bg); color: #fcd34d; border-color: #451a03; }
+  }
+
+  /* ── stats grid ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 1.25rem; display: none; }
+  .stat-card {
+    border-radius: var(--radius-sm); padding: 1rem 1.1rem;
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .stat-card .s-label { font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-card .s-val   { font-size: 1.75rem; font-weight: 700; }
+  .stat-matched { border-left: 4px solid var(--green); }
+  .stat-matched .s-label { color: var(--teal-d); }
+  .stat-matched .s-val   { color: var(--teal); }
+  .stat-skipped { border-left: 4px solid var(--amber); }
+  .stat-skipped .s-label { color: var(--amber-d); }
+  .stat-skipped .s-val   { color: var(--amber); }
+  .stat-total   { border-left: 4px solid var(--purple); }
+  .stat-total   .s-label { color: var(--purple-d); }
+  .stat-total   .s-val   { color: var(--purple); }
+  @media (prefers-color-scheme: dark) {
+    .stat-matched .s-label { color: #6ee7b7; }
+    .stat-matched .s-val   { color: #34d399; }
+    .stat-skipped .s-label { color: #fcd34d; }
+    .stat-skipped .s-val   { color: var(--amber); }
+    .stat-total   .s-label { color: #c4b5fd; }
+    .stat-total   .s-val   { color: #a78bfa; }
+  }
+
+  /* ── not found ── */
+  .notfound-block { margin-top: .75rem; display: none; }
+  .notfound-block summary {
+    font-size: .8rem; color: var(--text-muted); cursor: pointer; padding: .4rem 0;
+    list-style: none; display: flex; align-items: center; gap: 6px;
+  }
+  .notfound-block summary::before {
+    content: ''; display: inline-block;
+    width: 0; height: 0;
+    border: 5px solid transparent;
+    border-left: 6px solid var(--text-muted);
+    transition: transform .2s;
+  }
+  .notfound-block[open] summary::before { transform: rotate(90deg); }
+  .notfound-list {
+    font-size: .775rem; color: var(--text-muted);
+    line-height: 1.9; padding: .5rem .75rem;
+    background: var(--surface); border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    max-height: 180px; overflow-y: auto; margin-top: .4rem;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── buttons ── */
+  .btn-row { margin-top: 1.25rem; display: flex; gap: 10px; display: none; }
+  .btn {
+    font-size: .875rem; font-weight: 600;
+    padding: 10px 20px; border-radius: var(--radius-sm);
+    cursor: pointer; border: none; transition: filter .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-download {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff; flex: 1;
+  }
+  .btn-download:hover { filter: brightness(1.08); }
+  .btn-reset {
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-reset:hover { background: var(--gray-100); }
+  @media (prefers-color-scheme: dark) {
+    .btn-reset:hover { background: var(--gray-200); }
+  }
+
+  /* ── info section ── */
+  .info-section {
+    margin-top: 2.5rem; padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+  .info-section h2 {
+    font-size: .8rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-muted); margin-bottom: 1rem;
+  }
+  .info-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+  .info-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: .875rem 1rem;
+  }
+  .info-card-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block; margin-right: 6px; flex-shrink: 0;
+  }
+  .info-card-title {
+    font-size: .8rem; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; margin-bottom: .25rem;
+  }
+  .info-card-body { font-size: .775rem; color: var(--text-muted); line-height: 1.6; }
+
+  /* ── footer ── */
+  .footer {
+    text-align: center; padding: 1.5rem;
+    font-size: .75rem; color: var(--text-muted);
+    border-top: 1px solid var(--border); margin-top: 1rem;
+  }
+  .footer a { color: var(--pink-d); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-diamond"></div>
+    <h1>maimai 成績轉換器</h1>
+  </div>
+  <p>上傳成績 CSV，自動轉換為 <code>userMusicDetailList</code> JSON &nbsp;·&nbsp; 資料來源：gekichumai/dxrating</p>
+</header>
+
+<main class="main">
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".csv">
+    <div class="drop-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2185b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="drop-label" id="dropLabel">將成績 CSV 拖放到這裡</div>
+    <div class="drop-hint">或點擊選擇檔案 &nbsp;·&nbsp; 支援 Tab / 逗號分隔 &nbsp;·&nbsp; 英文 / 中文表頭自動判斷</div>
+  </div>
+
+  <div class="progress-track" id="progressTrack">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+  <div class="status-bar" id="statusBar"></div>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card stat-matched">
+      <div class="s-label">成功配對</div>
+      <div class="s-val" id="sMatched">0</div>
+    </div>
+    <div class="stat-card stat-skipped">
+      <div class="s-label">略過</div>
+      <div class="s-val" id="sSkipped">0</div>
+    </div>
+    <div class="stat-card stat-total">
+      <div class="s-label">總筆數</div>
+      <div class="s-val" id="sTotal">0</div>
+    </div>
+  </div>
+
+  <details class="notfound-block" id="notFoundBlock">
+    <summary id="notFoundSummary"></summary>
+    <div class="notfound-list" id="notFoundList"></div>
+  </details>
+
+  <div class="btn-row" id="btnRow">
+    <button class="btn btn-download" id="dlBtn">⬇ 下載 JSON</button>
+    <button class="btn btn-reset" id="resetBtn">重置</button>
+  </div>
+
+  <section class="info-section">
+    <h2>使用說明</h2>
+    <div class="info-cards">
+      <div class="info-card">
+        <div class="info-card-title">
+          <span class="info-card-dot" style="background:var(--pink)"></span>上傳 CSV
+        </div>
+        <div class="info-card-body">
+          拖放成績 CSV 到上方區域。<br>英文或中文表頭皆可。
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">
+          <span class="info-card-dot" style="background:var(--purple)"></span>取得曲目資料
+        </div>
+        <div class="info-card-body">
+          自動從 gekichumai/dxrating 下載最新的 <code>dxdata.json</code>。
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">
+          <span class="info-card-dot" style="background:var(--teal)"></span>轉換
+        </div>
+        <div class="info-card-body">
+          比對 internalId 並產生 <code>userMusicDetailList</code> JSON。
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">
+          <span class="info-card-dot" style="background:var(--green)"></span>下載
+        </div>
+        <div class="info-card-body">
+          下載 <code>new_grade.json</code> 即可使用。
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  data source: <a href="https://github.com/gekichumai/dxrating" target="_blank">gekichumai/dxrating</a>
+  &nbsp;·&nbsp; not affiliated with SEGA
+</footer>
+
+<script>
+const DXDATA_URL = 'https://raw.githubusercontent.com/gekichumai/dxrating/main/packages/dxdata/dxdata.json';
+const FIRST_LINE = 'Song_Title\tVersion\tDifficulty\tAchievement\tRank\tFC/AP\tDX_grade';
+const CH_TOKENS = ['歌曲','譜面','難度','達成率','Rank','FC/AP','DX 分數'];
+let resultJson = null, dxSongs = null, titleIndex = null;
+
+function normalizeTitle(s) {
+  if (!s) return '';
+  s = s.trim().replace(/^['"]|['"]$/g, '').trim();
+  s = s.normalize('NFKC');
+  s = s.replace(/\s+/g, '');
+  return s.toLowerCase();
+}
+function buildTitleIndex(songs) {
+  const idx = {};
+  songs.forEach((song, i) => {
+    const n = normalizeTitle(song.title || '');
+    if (!n) return;
+    if (!idx[n]) idx[n] = [];
+    idx[n].push(i);
+  });
+  return idx;
+}
+function versionToType(v) { return ((v || '').trim().toUpperCase() === 'DX') ? 'dx' : 'std'; }
+function diffToKey(d) {
+  const m = { BASIC:'basic', ADVANCED:'advanced', EXPERT:'expert', MASTER:'master', 'RE:MASTER':'remaster', REMASTER:'remaster' };
+  return m[(d || '').trim().toUpperCase()] || 'expert';
+}
+function diffToLevel(d) {
+  const m = { BASIC:0, ADVANCED:1, EXPERT:2, MASTER:3, 'RE:MASTER':4, REMASTER:4 };
+  return m[(d || '').trim().toUpperCase()] ?? 2;
+}
+function parseAchievement(s) {
+  const v = parseFloat((s || '').replace('%', '').trim());
+  return isNaN(v) ? 0 : Math.round(v * 10000);
+}
+function parseDxGrade(s) {
+  const v = parseInt((s || '').trim().split('/')[0]);
+  return isNaN(v) ? 0 : v;
+}
+function fallbackScoreRank(ach) {
+  const p = ach / 10000;
+  if (p >= 100.5) return 15; if (p >= 100) return 14; if (p >= 99.5) return 13;
+  if (p >= 99) return 12; if (p >= 98) return 11; if (p >= 97) return 10;
+  if (p >= 94) return 9; if (p >= 90) return 8; if (p >= 80) return 7;
+  if (p >= 75) return 6; if (p >= 70) return 5; if (p >= 60) return 4;
+  if (p >= 50) return 3; return 2;
+}
+function rankToScore(rank, ach) {
+  const m = { d:1,c:2,b:3,bb:4,bbb:5,a:6,aa:7,aaa:8,s:9,'s+':10,ss:11,'ss+':12,sss:13,'sss+':14,'sss+':15 };
+  return m[(rank || '').trim().toLowerCase()] ?? fallbackScoreRank(ach);
+}
+function comboToStatus(s) {
+  const c = (s || '').trim().toLowerCase();
+  if (c === 'ap+' || c === 'app') return 4;
+  if (c === 'ap') return 3; if (c === 'fc+') return 2;
+  if (c === 'fc' || c === 'fcp') return 1; return 0;
+}
+function findInternalId(title, version, difficulty) {
+  const norm = normalizeTitle(title);
+  const cands = titleIndex[norm] || [];
+  if (!cands.length) return null;
+  const st = versionToType(version), dk = diffToKey(difficulty);
+  for (const i of cands) {
+    for (const sh of (dxSongs[i].sheets || [])) {
+      if ((sh.type||'').toLowerCase()===st && (sh.difficulty||'').toLowerCase()===dk && sh.internalId!=null)
+        return parseInt(sh.internalId);
+    }
+  }
+  for (const i of cands) {
+    for (const sh of (dxSongs[i].sheets || [])) {
+      if ((sh.difficulty||'').toLowerCase()===dk && sh.internalId!=null)
+        return parseInt(sh.internalId);
+    }
+  }
+  return null;
+}
+function parseCSV(text) {
+  let lines = text.split(/\r?\n/);
+  if (!lines.length) return [];
+  const tokens = lines[0].trim().split(/[\t,]/).map(t => t.trim());
+  if (JSON.stringify(tokens) === JSON.stringify(CH_TOKENS)) lines[0] = FIRST_LINE;
+  const delim = lines.slice(0,3).join('\n').includes('\t') ? '\t' : ',';
+  const headers = lines[0].split(delim).map(h => h.trim().replace(/^"|"$/g, ''));
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const vals = line.split(delim).map(v => v.trim().replace(/^"|"$/g, ''));
+    const row = {};
+    headers.forEach((h, j) => row[h] = vals[j] || '');
+    rows.push(row);
+  }
+  return rows;
+}
+function setStatus(msg, type) {
+  const el = document.getElementById('statusBar');
+  el.textContent = msg; el.className = 'status-bar ' + type; el.style.display = 'block';
+}
+function setProgress(pct) {
+  const t = document.getElementById('progressTrack'), f = document.getElementById('progressFill');
+  if (pct === null) { t.style.display = 'none'; return; }
+  t.style.display = 'block'; f.style.width = pct + '%';
+}
+async function loadDxdata() {
+  if (dxSongs) return;
+    setStatus('正在從 gekichumai/dxrating 下載 dxdata …', 'info'); setProgress(20);
+  const res = await fetch(DXDATA_URL);
+  if (!res.ok) throw new Error('下載失敗：' + res.status);
+  setProgress(60);
+  const data = await res.json();
+  dxSongs = data.songs; titleIndex = buildTitleIndex(dxSongs);
+  setProgress(100); setTimeout(() => setProgress(null), 400);
+}
+async function processFile(file) {
+  document.getElementById('statsGrid').style.display = 'none';
+  document.getElementById('btnRow').style.display = 'none';
+  document.getElementById('notFoundBlock').style.display = 'none';
+  resultJson = null;
+  try {
+    await loadDxdata();
+    setStatus('正在解析 CSV …', 'info');
+    const rows = parseCSV(await file.text());
+    if (!rows.length) { setStatus('找不到任何資料列，請確認檔案格式。', 'error'); return; }
+    const results = [], notFound = [];
+    for (const row of rows) {
+      const title      = (row['Song_Title'] || row['歌曲'] || '').trim();
+      const version    = (row['Version']    || row['譜面'] || '').trim();
+      const difficulty = (row['Difficulty'] || row['難度'] || '').trim();
+      const achStr     = (row['Achievement']|| row['達成率']|| '').trim();
+      const rankStr    = (row['Rank']       || '').trim();
+      const comboStr   = (row['FC/AP']      || '').trim();
+      const dxStr      = (row['DX_grade']   || row['DX 分數'] || '').trim();
+      if (!title) continue;
+      const id = findInternalId(title, version, difficulty);
+      if (id === null) { notFound.push(`${title} (${version} ${difficulty})`); continue; }
+      const ach = parseAchievement(achStr);
+      results.push({
+        musicId: id, level: diffToLevel(difficulty), playCount: 1,
+        achievement: ach, comboStatus: comboToStatus(comboStr),
+        syncStatus: 0, deluxscoreMax: parseDxGrade(dxStr),
+        scoreRank: rankToScore(rankStr, ach), extNum1: 0
+      });
+    }
+    resultJson = { userMusicDetailList: results };
+    document.getElementById('sMatched').textContent = results.length;
+    document.getElementById('sSkipped').textContent = notFound.length;
+    document.getElementById('sTotal').textContent   = rows.length;
+    document.getElementById('statsGrid').style.display = 'grid';
+    document.getElementById('btnRow').style.display    = 'flex';
+    if (notFound.length) {
+      const uniq = [...new Set(notFound)].sort();
+      document.getElementById('notFoundSummary').textContent = `${uniq.length} 首歌曲未能配對（點擊展開）`;
+      document.getElementById('notFoundList').innerHTML = uniq.map(t => '• ' + t).join('<br>');
+      document.getElementById('notFoundBlock').style.display = 'block';
+    }
+    setStatus(results.length === 0
+      ? '轉換結果為 0 筆，可能是 dxdata 中缺少 internalId。'
+      : `完成 — 成功轉換 ${results.length} 筆成績。`,
+      results.length === 0 ? 'warn' : 'success');
+  } catch (e) {
+    setStatus('錯誤：' + e.message, 'error'); setProgress(null);
+  }
+}
+document.getElementById('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  document.getElementById('dropLabel').textContent = f.name;
+  processFile(f);
+});
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.endsWith('.csv')) {
+    document.getElementById('dropLabel').textContent = f.name;
+    processFile(f);
+  }
+});
+document.getElementById('dlBtn').addEventListener('click', () => {
+  if (!resultJson) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(resultJson, null, 2)], { type: 'application/json' }));
+  a.download = 'new_grade.json'; a.click();
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  document.getElementById('fileInput').value = '';
+  document.getElementById('dropLabel').textContent = '將成績 CSV 拖放到這裡';
+  ['statusBar','progressTrack'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('statsGrid').style.display = 'none';
+  document.getElementById('btnRow').style.display = 'none';
+  document.getElementById('notFoundBlock').style.display = 'none';
+  resultJson = null;
+});
+</script>
+</body>
+</html>
