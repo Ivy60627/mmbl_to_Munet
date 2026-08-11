@@ -578,9 +578,12 @@ async function processText(text) {
       if (!title) continue;
       const id = findInternalId(title, version, difficulty);
       if (id === null) { notFound.push(`${title} (${version} ${difficulty})`); continue; }
+      // DX 譜的 musicId 要加 10000（但只有在 id < 10000 時才加，避免重複偏移）
+      const isDx = versionToType(version) === 'dx';
+      const musicId = isDx && id < 10000 ? id + 10000 : id;
       const ach = parseAchievement(achStr);
       results.push({
-        musicId: id, level: diffToLevel(difficulty), playCount: 1,
+        musicId: musicId, level: diffToLevel(difficulty), playCount: 1,
         achievement: ach, comboStatus: comboToStatus(comboStr),
         syncStatus: 0, deluxscoreMax: parseDxGrade(dxStr),
         scoreRank: rankToScore(rankStr, ach), extNum1: 0
