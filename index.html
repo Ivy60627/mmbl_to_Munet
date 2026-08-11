@@ -264,6 +264,56 @@
   }
   .info-card-body { font-size: .775rem; color: var(--text-muted); line-height: 1.6; }
 
+  /* ── tabs ── */
+  .tab-bar {
+    display: flex; gap: 0; margin-bottom: 1rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    overflow: hidden; background: var(--surface);
+  }
+  .tab-btn {
+    flex: 1; padding: 9px 12px; font-size: .85rem; font-weight: 600;
+    cursor: pointer; border: none; background: transparent; color: var(--text-muted);
+    transition: background .15s, color .15s;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff;
+  }
+  .tab-btn:not(.active):hover { background: var(--gray-100); color: var(--text); }
+  @media (prefers-color-scheme: dark) {
+    .tab-btn:not(.active):hover { background: var(--gray-200); }
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── paste area ── */
+  .paste-area {
+    width: 100%; min-height: 180px; padding: 1rem;
+    font-family: 'Courier New', monospace; font-size: .8rem;
+    background: var(--surface); color: var(--text);
+    border: 2px dashed #d1a3c9; border-radius: var(--radius);
+    resize: vertical; outline: none; line-height: 1.7;
+    transition: border-color .15s;
+  }
+  .paste-area:focus { border-color: var(--pink); }
+  .paste-area::placeholder { color: var(--text-muted); }
+  .paste-btn-row { margin-top: .75rem; display: flex; gap: 8px; }
+  .btn-convert {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff; font-size: .875rem; font-weight: 600;
+    padding: 9px 20px; border-radius: var(--radius-sm);
+    border: none; cursor: pointer; transition: filter .15s, transform .1s;
+  }
+  .btn-convert:hover { filter: brightness(1.08); }
+  .btn-convert:active { transform: scale(.97); }
+  .btn-clear {
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); font-size: .875rem; font-weight: 600;
+    padding: 9px 16px; border-radius: var(--radius-sm);
+    cursor: pointer; transition: background .15s;
+  }
+  .btn-clear:hover { background: var(--gray-100); }
+
   /* ── footer ── */
   .footer {
     text-align: center; padding: 1.5rem;
@@ -281,22 +331,37 @@
     <div class="logo-diamond"></div>
     <h1>maimai 成績轉換器</h1>
   </div>
-  <p>上傳成績 CSV，自動轉換為 <code>userMusicDetailList</code> JSON &nbsp;·&nbsp; 資料來源：gekichumai/dxrating</p>
+  <p>上傳成績 CSV 或貼上 mmbl 複製的文字，自動轉換為 <code>userMusicDetailList</code> JSON &nbsp;·&nbsp; 資料來源：gekichumai/dxrating</p>
 </header>
 
 <main class="main">
 
-  <div class="drop-zone" id="dropZone">
-    <input type="file" id="fileInput" accept=".csv">
-    <div class="drop-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#c2185b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="17 8 12 3 7 8"/>
-        <line x1="12" y1="3" x2="12" y2="15"/>
-      </svg>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabCsvBtn">📁 上傳 CSV</button>
+    <button class="tab-btn" id="tabPasteBtn">📋 貼上文字</button>
+  </div>
+
+  <div class="tab-panel active" id="tabCsv">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".csv">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#c2185b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="drop-label" id="dropLabel">將成績 CSV 拖放到這裡</div>
+      <div class="drop-hint">或點擊選擇檔案 &nbsp;·&nbsp; 支援 Tab / 逗號分隔 &nbsp;·&nbsp; 英文 / 中文表頭自動判斷</div>
     </div>
-    <div class="drop-label" id="dropLabel">將成績 CSV 拖放到這裡</div>
-    <div class="drop-hint">或點擊選擇檔案 &nbsp;·&nbsp; 支援 Tab / 逗號分隔 &nbsp;·&nbsp; 英文 / 中文表頭自動判斷</div>
+  </div>
+
+  <div class="tab-panel" id="tabPaste">
+    <textarea class="paste-area" id="pasteArea" placeholder="從 mmbl 點「複製成績」後，直接 Ctrl+V 貼到這裡&#10;&#10;格式範例：&#10;歌曲	分類	版本	譜面	難度	等級	達成率	Rank	FC/AP	...&#10;カゲロウデイズ	niconico&VOCALOID™		GreeN	STD	BASIC	..."></textarea>
+    <div class="paste-btn-row">
+      <button class="btn-convert" id="convertBtn">轉換</button>
+      <button class="btn-clear" id="clearBtn">清除</button>
+    </div>
   </div>
 
   <div class="progress-track" id="progressTrack">
@@ -488,16 +553,19 @@ async function loadDxdata() {
   dxSongs = data.songs; titleIndex = buildTitleIndex(dxSongs);
   setProgress(100); setTimeout(() => setProgress(null), 400);
 }
-async function processFile(file) {
+function resetResults() {
   document.getElementById('statsGrid').style.display = 'none';
   document.getElementById('btnRow').style.display = 'none';
   document.getElementById('notFoundBlock').style.display = 'none';
   resultJson = null;
+}
+async function processText(text) {
+  resetResults();
   try {
     await loadDxdata();
-    setStatus('正在解析 CSV …', 'info');
-    const rows = parseCSV(await file.text());
-    if (!rows.length) { setStatus('找不到任何資料列，請確認檔案格式。', 'error'); return; }
+    setStatus('正在解析資料 …', 'info');
+    const rows = parseCSV(text);
+    if (!rows.length) { setStatus('找不到任何資料列，請確認格式。', 'error'); return; }
     const results = [], notFound = [];
     for (const row of rows) {
       const title      = (row['Song_Title'] || row['歌曲'] || '').trim();
@@ -538,6 +606,24 @@ async function processFile(file) {
     setStatus('錯誤：' + e.message, 'error'); setProgress(null);
   }
 }
+async function processFile(file) {
+  resetResults();
+  processText(await file.text());
+}
+// ── tab switching ──
+document.getElementById('tabCsvBtn').addEventListener('click', () => {
+  document.getElementById('tabCsvBtn').classList.add('active');
+  document.getElementById('tabPasteBtn').classList.remove('active');
+  document.getElementById('tabCsv').classList.add('active');
+  document.getElementById('tabPaste').classList.remove('active');
+});
+document.getElementById('tabPasteBtn').addEventListener('click', () => {
+  document.getElementById('tabPasteBtn').classList.add('active');
+  document.getElementById('tabCsvBtn').classList.remove('active');
+  document.getElementById('tabPaste').classList.add('active');
+  document.getElementById('tabCsv').classList.remove('active');
+});
+// ── CSV upload ──
 document.getElementById('fileInput').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;
   document.getElementById('dropLabel').textContent = f.name;
@@ -554,6 +640,19 @@ dz.addEventListener('drop', e => {
     processFile(f);
   }
 });
+// ── paste tab ──
+document.getElementById('convertBtn').addEventListener('click', () => {
+  const text = document.getElementById('pasteArea').value.trim();
+  if (!text) { setStatus('請先貼上成績文字。', 'warn'); return; }
+  processText(text);
+});
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('pasteArea').value = '';
+  resetResults();
+  document.getElementById('statusBar').style.display = 'none';
+  document.getElementById('progressTrack').style.display = 'none';
+});
+// ── download / reset ──
 document.getElementById('dlBtn').addEventListener('click', () => {
   if (!resultJson) return;
   const a = document.createElement('a');
@@ -563,11 +662,9 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('fileInput').value = '';
   document.getElementById('dropLabel').textContent = '將成績 CSV 拖放到這裡';
+  document.getElementById('pasteArea').value = '';
   ['statusBar','progressTrack'].forEach(id => document.getElementById(id).style.display = 'none');
-  document.getElementById('statsGrid').style.display = 'none';
-  document.getElementById('btnRow').style.display = 'none';
-  document.getElementById('notFoundBlock').style.display = 'none';
-  resultJson = null;
+  resetResults();
 });
 </script>
 </body>
